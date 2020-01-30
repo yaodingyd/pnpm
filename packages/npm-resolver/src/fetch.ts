@@ -9,6 +9,7 @@ type RegistryResponse = {
 }
 
 class RegistryResponseError extends PnpmError {
+  public readonly info: string
   public readonly package: string
   public readonly response: RegistryResponse
   public readonly uri: string
@@ -17,15 +18,20 @@ class RegistryResponseError extends PnpmError {
     package: string,
     response: RegistryResponse,
     uri: string,
+    info: string,
   }) {
     super(
       `REGISTRY_META_RESPONSE_${opts.response.status}`,
-      `${opts.response.status} ${opts.response.statusText}: ${opts.package} (via ${opts.uri})`)
+      `${opts.response.status} ${opts.response.statusText}: ${opts.package} (via ${opts.uri})${opts.info}`)
     this.package = opts.package
     this.response = opts.response
     this.uri = opts.uri
+    this.info = opts.info
   }
 }
+
+// https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+const semvarRegex = new RegExp(/(.*)(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/)
 
 export default async function fromRegistry (
   fetch: (url: string, opts: {auth?: object}) => Promise<{}>,
@@ -36,7 +42,13 @@ export default async function fromRegistry (
   const uri = toUri(pkgName, registry)
   const response = await fetch(uri, { auth }) as RegistryResponse
   if (response.status > 400) {
+    let info = ''
+    const matched = pkgName.match(semvarRegex)
+    if (matched) {
+      info = ` Did you mean ${matched[1]}?`
+    }
     throw new RegistryResponseError({
+      info,
       package: pkgName,
       response,
       uri,
