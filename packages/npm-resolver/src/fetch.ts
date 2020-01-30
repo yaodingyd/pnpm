@@ -9,24 +9,21 @@ type RegistryResponse = {
 }
 
 class RegistryResponseError extends PnpmError {
-  public readonly info: string
   public readonly package: string
   public readonly response: RegistryResponse
   public readonly uri: string
 
-  constructor (opts: {
+  constructor (info: string, opts: {
     package: string,
     response: RegistryResponse,
     uri: string,
-    info: string,
   }) {
     super(
       `REGISTRY_META_RESPONSE_${opts.response.status}`,
-      `${opts.response.status} ${opts.response.statusText}: ${opts.package} (via ${opts.uri})${opts.info}`)
+      `${opts.response.status} ${opts.response.statusText}: ${opts.package} (via ${opts.uri})${info}`)
     this.package = opts.package
     this.response = opts.response
     this.uri = opts.uri
-    this.info = opts.info
   }
 }
 
@@ -47,8 +44,7 @@ export default async function fromRegistry (
     if (matched) {
       info = ` Did you mean ${matched[1]}?`
     }
-    throw new RegistryResponseError({
-      info,
+    throw new RegistryResponseError(info, {
       package: pkgName,
       response,
       uri,
